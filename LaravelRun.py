@@ -5,7 +5,6 @@ import servicemanager
 import subprocess
 import os
 import sys
-import shutil
 
 class LaravelService(win32serviceutil.ServiceFramework):
     _svc_name_ = "DSCPayslip"
@@ -15,22 +14,11 @@ class LaravelService(win32serviceutil.ServiceFramework):
         win32serviceutil.ServiceFramework.__init__(self, args)
         self.hWaitStop = win32event.CreateEvent(None, 0, 0, None)
         self.processes = []
-
-        # Dynamically get the path where the EXE or script is running
-        self.working_dir = os.path.dirname(sys.executable if getattr(sys, 'frozen', False) else os.path.abspath(__file__))
-
-        # Attempt to detect PHP from system PATH
-        self.php_path = shutil.which("php")
-        if not self.php_path:
-            raise FileNotFoundError("PHP executable not found in system PATH.")
+        self.working_dir = r"C:\Users\rayiv\Documents\DSC Payroll Email Sender\DSCPayrollEmailSender"
+        self.php_path = r"C:\php 8.3.22\php.exe"
 
     def start_process(self, command):
-        return subprocess.Popen(
-            [self.php_path, "artisan"] + command.split(),
-            cwd=self.working_dir,
-            stdout=subprocess.DEVNULL,  # Suppress console output (optional)
-            stderr=subprocess.DEVNULL
-        )
+        return subprocess.Popen([self.php_path, "artisan"] + command.split(), cwd=self.working_dir)
 
     def SvcDoRun(self):
         servicemanager.LogMsg(
@@ -38,10 +26,6 @@ class LaravelService(win32serviceutil.ServiceFramework):
             servicemanager.PYS_SERVICE_STARTED,
             (self._svc_name_, "")
         )
-
-        servicemanager.LogInfoMsg(f"[{self._svc_name_}] Starting Laravel background workers...")
-        servicemanager.LogInfoMsg(f"[{self._svc_name_}] Using PHP: {self.php_path}")
-        servicemanager.LogInfoMsg(f"[{self._svc_name_}] Working directory: {self.working_dir}")
 
         # Start Laravel commands
         self.processes.append(self.start_process("serve"))
@@ -53,11 +37,8 @@ class LaravelService(win32serviceutil.ServiceFramework):
 
     def SvcStop(self):
         self.ReportServiceStatus(win32service.SERVICE_STOP_PENDING)
-        servicemanager.LogInfoMsg(f"[{self._svc_name_}] Stopping Laravel workers...")
-
         for p in self.processes:
             p.terminate()
-
         self.ReportServiceStatus(win32service.SERVICE_STOPPED)
         win32event.SetEvent(self.hWaitStop)
 
