@@ -14,9 +14,22 @@ class LaravelService(win32serviceutil.ServiceFramework):
         win32serviceutil.ServiceFramework.__init__(self, args)
         self.hWaitStop = win32event.CreateEvent(None, 0, 0, None)
         self.processes = []
-        self.working_dir = r"C:\Users\rayiv\Documents\DSC Payroll Email Sender\DSCPayrollEmailSender"
-        self.php_path = r"C:\php 8.3.22\php.exe"
-
+        
+        # Get the directory of the current executable
+        if getattr(sys, 'frozen', False):
+            # Running as compiled executable
+            self.working_dir = os.path.dirname(sys.executable)
+        else:
+            # Running as script
+            self.working_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        # Get PHP path using 'where php' command
+        result = subprocess.run(['where', 'php'], capture_output=True, text=True, shell=True)
+        if result.returncode == 0:
+            self.php_path = result.stdout.strip().split('\n')[0]
+        else:
+            raise Exception("PHP not found in system PATH. Please ensure PHP is installed and added to PATH.")
+        
     def start_process(self, command):
         return subprocess.Popen([self.php_path, "artisan"] + command.split(), cwd=self.working_dir)
 
